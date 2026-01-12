@@ -1,0 +1,19 @@
+Flask==2.3.3
+pandas==2.0.3
+numpy==1.24.3
+scikit-learn==1.3.0
+matplotlib==3.7.2
+seaborn==0.12.2
+# Deep Learning Libraries
+torch==2.0.1
+tensorflow==2.13.0
+transformers==4.30.2
+sentence-transformers==2.2.2
+torch-geometric==2.3.1
+dgl==1.1.2
+# Additional ML Libraries
+gensim==4.3.1
+faiss-cpu==1.7.4
+optuna==3.2.0
+
+# run python app.py

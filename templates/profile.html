@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Library System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-user"></i> User Profile
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- User Info -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-user-circle fa-5x text-primary mb-3"></i>
+                <h4>User {{ session.user_id }}</h4>
+                <p class="text-muted">Library Member</p>
+                
+                <div class="mt-4">
+                    <h6>Reading Statistics</h6>
+                    <p><strong>{{ user_books|length }}</strong> books rated</p>
+                    {% if user_books|length > 0 %}
+                    <p><strong>{{ "%.1f"|format(user_books['rating'].mean()) }}</strong> average rating given</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rating History -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-star"></i> Rating History</h5>
+                <small class="text-muted">All books you've rated</small>
+            </div>
+            <div class="card-body">
+                {% if user_books|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Book</th>
+                                <th>Author</th>
+                                <th>Your Rating</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ratingHistoryTable">
+                            {% for _, book in user_books.iterrows() %}
+                            <tr class="rating-row" {% if loop.index > 5 %}style="display: none;"{% endif %}>
+                                <td>
+                                    <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="text-decoration-none">
+                                        {{ book.title[:50] }}{% if book.title|length > 50 %}...{% endif %}
+                                    </a>
+                                </td>
+                                <td>{{ book.authors }}</td>
+                                <td>
+                                    <span class="rating-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < book.rating %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    <span class="ms-1">({{ book.rating }})</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <p class="text-muted mb-0" id="ratingStatus">
+                        {% if user_books|length > 5 %}
+                            Showing 5 of {{ user_books|length }} rated books.
+                        {% else %}
+                            Showing all {{ user_books|length }} rated books.
+                        {% endif %}
+                    </p>
+                    {% if user_books|length > 5 %}
+                    <button class="btn btn-sm btn-outline-primary" id="showAllBtn" onclick="toggleRatingHistory()">
+                        <i class="fas fa-chevron-down"></i> Show All
+                    </button>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-muted">No reading history found. Start rating books to build your profile!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Personalized Recommendations -->
+{% if not recommendations.empty %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="recommendation-section">
+            <h2 class="mb-4">
+                <i class="fas fa-star"></i> Recommended for You
+            </h2>
+            <p class="text-muted">Based on your reading history and preferences</p>
+            
+            <div class="row">
+                {% for _, book in recommendations.iterrows() %}
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card book-card">
+                        <div class="card-body">
+                            <h5 class="card-title book-title">{{ book.title[:50] }}{% if book.title|length > 50 %}...{% endif %}</h5>
+                            <p class="card-text book-author">{{ book.authors }}</p>
+                            <div class="mb-2">
+                                <span class="rating-stars">
+                                    {% for i in range(5) %}
+                                        {% if i < book.average_rating %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </span>
+                                <small class="text-muted">({{ "%.1f"|format(book.average_rating) }})</small>
+                            </div>
+                            <div class="mb-2">
+                                <span class="similarity-score">
+                                    {% if 'recommendation_score' in book %}
+                                        Score: {{ "%.3f"|format(book.recommendation_score) }}
+                                    {% else %}
+                                        <small class="text-muted">N/A</small>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Reading List Preview -->
+{% if not reading_list.empty %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-list"></i> Reading List</h5>
+                <a href="{{ url_for('reading_list') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for _, book in reading_list.head(4).iterrows() %}
+                    <div class="col-md-3 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ book.title[:30] }}{% if book.title|length > 30 %}...{% endif %}</h6>
+                                <p class="card-text text-muted small">{{ book.authors }}</p>
+                                <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function toggleRatingHistory() {
+    const hiddenRows = document.querySelectorAll('.rating-row[style*="display: none"]');
+    const showAllBtn = document.getElementById('showAllBtn');
+    const ratingStatus = document.getElementById('ratingStatus');
+    const totalBooks = {{ user_books|length }};
+    
+    if (hiddenRows.length > 0) {
+        // Show all rows
+        hiddenRows.forEach(row => {
+            row.style.display = '';
+        });
+        showAllBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Show Less';
+        ratingStatus.textContent = `Showing all ${totalBooks} rated books.`;
+    } else {
+        // Hide rows beyond the first 5
+        const allRows = document.querySelectorAll('.rating-row');
+        allRows.forEach((row, index) => {
+            if (index >= 5) {
+                row.style.display = 'none';
+            }
+        });
+        showAllBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Show All';
+        ratingStatus.textContent = `Showing 5 of ${totalBooks} rated books.`;
+    }
+}
+</script>
+{% endblock %}

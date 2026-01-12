@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results - Library System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-search"></i> Search Results
+        </h1>
+        
+        {% if query %}
+        <div class="alert alert-info">
+            <i class="fas fa-search me-2"></i>Search results for: <strong>"{{ query }}"</strong>
+            {% if algorithm %}
+            <br><small>Algorithm: <strong>{{ algorithm.replace('-', ' ').title() }}</strong></small>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% if message %}
+        <div class="alert alert-warning">
+            <i class="fas fa-info-circle me-2"></i>{{ message }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form action="{{ url_for('search') }}" method="GET">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="q" placeholder="Search by title, author, or ISBN..." 
+                               value="{{ query }}">
+                        <select class="form-select" name="algorithm" style="max-width: 180px;">
+                            <option value="content-based" {% if algorithm == 'content-based' %}selected{% endif %}>Content-Based</option>
+                            <option value="lsa-ann" {% if algorithm == 'lsa-ann' %}selected{% endif %}>LSA + ANN (Advanced)</option>
+                            <option value="hybrid" {% if algorithm == 'hybrid' %}selected{% endif %}>Hybrid (CF + CBF)</option>
+                            <option value="collaborative" {% if algorithm == 'collaborative' %}selected{% endif %}>Collaborative</option>
+                        </select>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Results -->
+{% if query %}
+    {% if not results.empty %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> Found {{ results|length }} book(s)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Book</th>
+                                    <th>Author</th>
+                                    <th>Year</th>
+                                    <th>Rating</th>
+                                    <th>Reviews</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for _, book in results.iterrows() %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="text-decoration-none">
+                                            {{ book.title[:60] }}{% if book.title|length > 60 %}...{% endif %}
+                                        </a>
+                                    </td>
+                                    <td>{{ book.authors }}</td>
+                                    <td>
+                                        {% if book.original_publication_year %}
+                                            {{ book.original_publication_year }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="rating-stars">
+                                            {% for i in range(5) %}
+                                                {% if i < book.average_rating %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </span>
+                                        <span class="ms-1">({{ "%.1f"|format(book.average_rating) }})</span>
+                                    </td>
+                                    <td>{{ book.ratings_count }}</td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            {% if session.user_id %}
+                                            <button class="btn btn-sm btn-outline-success" id="addBtn{{ book.book_id }}" onclick="addToReadingListWithFeedback({{ book.book_id }})">
+                                                <i class="fas fa-plus"></i> Add
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pagination Controls -->
+    {% if total_pages > 1 %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted">
+                    Showing {{ ((page - 1) * 25) + 1 }} to {{ [page * 25, total_results]|min }} of {{ total_results }} results
+                </div>
+                <nav aria-label="Search results pagination">
+                    <ul class="pagination pagination-sm mb-0">
+                        <!-- Previous button -->
+                        {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('search', q=query, algorithm=algorithm, page=page-1) }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </span>
+                        </li>
+                        {% endif %}
+                        
+                        <!-- Page numbers -->
+                        {% for page_num in page_numbers %}
+                        <li class="page-item {% if page_num == page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('search', q=query, algorithm=algorithm, page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                        {% endfor %}
+                        
+                        <!-- Next button -->
+                        {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('search', q=query, algorithm=algorithm, page=page+1) }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No books found</h5>
+                    <p class="text-muted">Try searching with different keywords or browse our collection</p>
+                    <a href="{{ url_for('home') }}" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Browse All Books
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Search for Books</h5>
+                <p class="text-muted">Enter a book title, author name, or ISBN to find books in our collection</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Popular Searches -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-fire"></i> Popular Authors</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Try searching for these popular authors:</h6>
+                        <ul class="list-unstyled">
+                            <li><a href="{{ url_for('search', q='J.K. Rowling') }}" class="text-decoration-none">J.K. Rowling</a></li>
+                            <li><a href="{{ url_for('search', q='Stephen King') }}" class="text-decoration-none">Stephen King</a></li>
+                            <li><a href="{{ url_for('search', q='Agatha Christie') }}" class="text-decoration-none">Agatha Christie</a></li>
+                            <li><a href="{{ url_for('search', q='George Orwell') }}" class="text-decoration-none">George Orwell</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Or try these popular genres:</h6>
+                        <ul class="list-unstyled">
+                            <li><a href="{{ url_for('search', q='fantasy') }}" class="text-decoration-none">Fantasy</a></li>
+                            <li><a href="{{ url_for('search', q='mystery') }}" class="text-decoration-none">Mystery</a></li>
+                            <li><a href="{{ url_for('search', q='romance') }}" class="text-decoration-none">Romance</a></li>
+                            <li><a href="{{ url_for('search', q='science fiction') }}" class="text-decoration-none">Science Fiction</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addToReadingList(bookId) {
+    fetch('/api/add-to-reading-list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            book_id: bookId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage('Book added to reading list!', 'success');
+            // Change button to show it's been added
+            const button = event.target;
+            button.innerHTML = '<i class="fas fa-check"></i> Added';
+            button.className = 'btn btn-sm btn-outline-success disabled';
+        } else {
+            showMessage(data.message || 'Error adding book to reading list', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error adding book to reading list', 'error');
+    });
+}
+
+// Enhanced function with toast notifications and button state changes
+function addToReadingListWithFeedback(bookId) {
+    const button = document.getElementById(`addBtn${bookId}`);
+    const originalText = button.innerHTML;
+    
+    // Disable button and show loading state
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    
+    fetch('/api/add-to-reading-list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ book_id: bookId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success toast
+            showMessage('Book added to reading list!', 'success');
+            
+            // Change button to "Added" state
+            button.innerHTML = '<i class="fas fa-check"></i> Added';
+            button.className = 'btn btn-sm btn-outline-success';
+            button.disabled = true;
+        } else {
+            // Show error toast
+            showMessage(data.message || 'Failed to add book', 'error');
+            
+            // Restore original button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error adding book to reading list', 'error');
+        
+        // Restore original button state
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+// showMessage function is now handled by the enhanced system in base.html
+</script>
+
+{% endblock %}

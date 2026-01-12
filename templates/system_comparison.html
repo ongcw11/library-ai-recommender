@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}System Comparison - Deep Learning AI{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-brain text-primary"></i>
+                Recommendation System Comparison
+            </h1>
+            <p class="lead">Compare different AI recommendation approaches for User {{ user_id }}</p>
+        </div>
+    </div>
+
+    <!-- System Information -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        Active System Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>System Type:</h6>
+                            <p class="text-primary font-weight-bold">{{ system_info.system_type }}</p>
+                            
+                            <h6>Components:</h6>
+                            <ul class="list-unstyled">
+                                {% for component in system_info.components %}
+                                <li><i class="fas fa-check text-success"></i> {{ component }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Model Type:</h6>
+                            <p>{{ system_info.model_type }}</p>
+                            
+                            <h6>Description:</h6>
+                            <p class="text-muted">{{ system_info.description }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i>
+                        Performance Metrics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ "%.3f"|format(metrics.lsa_metrics.precision_at_k) }}</h4>
+                                <p class="mb-0">LSA Precision@K</p>
+                                <small class="text-muted">Traditional ML</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-warning">{{ "%.3f"|format(metrics.deep_learning_metrics.rmse) }}</h4>
+                                <p class="mb-0">Deep Learning RMSE</p>
+                                <small class="text-muted">Neural Networks</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            {% if metrics.hybrid_metrics %}
+                            <div class="text-center">
+                                <h4 class="text-success">{{ "%.3f"|format(metrics.hybrid_metrics.hybrid_precision_at_k) }}</h4>
+                                <p class="mb-0">Hybrid Precision@K</p>
+                                <small class="text-muted">Best of Both</small>
+                            </div>
+                            {% else %}
+                            <div class="text-center">
+                                <h4 class="text-muted">N/A</h4>
+                                <p class="mb-0">Hybrid Metrics</p>
+                                <small class="text-muted">Not Available</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendation Comparison -->
+    <div class="row">
+        <!-- LSA Recommendations -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-search"></i>
+                        LSA-Enhanced System
+                    </h5>
+                    <small>Traditional Machine Learning</small>
+                </div>
+                <div class="card-body">
+                    {% if comparison.lsa_recommendations and not comparison.lsa_recommendations.empty %}
+                        {% for book in comparison.lsa_recommendations.itertuples() %}
+                        <div class="book-item mb-3">
+                            <div class="d-flex">
+                                {% if book.small_image_url %}
+                                <img src="{{ book.small_image_url }}" alt="{{ book.title }}" class="book-cover-small me-3">
+                                {% else %}
+                                <div class="book-cover-placeholder me-3">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <h6 class="book-title mb-1">{{ book.title }}</h6>
+                                    <p class="book-author text-muted mb-1">{{ book.authors }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-primary">{{ "%.1f"|format(book.recommendation_score) }}%</span>
+                                        {% if book.average_rating %}
+                                        <small class="text-muted">
+                                            <i class="fas fa-star text-warning"></i>
+                                            {{ "%.1f"|format(book.average_rating) }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No LSA recommendations available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Deep Learning Recommendations -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-brain"></i>
+                        Deep Learning AI
+                    </h5>
+                    <small>Neural Networks</small>
+                </div>
+                <div class="card-body">
+                    {% if comparison.deep_learning_recommendations and not comparison.deep_learning_recommendations.empty %}
+                        {% for book in comparison.deep_learning_recommendations.itertuples() %}
+                        <div class="book-item mb-3">
+                            <div class="d-flex">
+                                {% if book.small_image_url %}
+                                <img src="{{ book.small_image_url }}" alt="{{ book.title }}" class="book-cover-small me-3">
+                                {% else %}
+                                <div class="book-cover-placeholder me-3">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <h6 class="book-title mb-1">{{ book.title }}</h6>
+                                    <p class="book-author text-muted mb-1">{{ book.authors }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-warning text-dark">{{ "%.3f"|format(book.recommendation_score) }}</span>
+                                        {% if book.average_rating %}
+                                        <small class="text-muted">
+                                            <i class="fas fa-star text-warning"></i>
+                                            {{ "%.1f"|format(book.average_rating) }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No deep learning recommendations available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Hybrid Recommendations -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-magic"></i>
+                        Hybrid System
+                    </h5>
+                    <small>Best of Both Worlds</small>
+                </div>
+                <div class="card-body">
+                    {% if comparison.hybrid_recommendations and not comparison.hybrid_recommendations.empty %}
+                        {% for book in comparison.hybrid_recommendations.itertuples() %}
+                        <div class="book-item mb-3">
+                            <div class="d-flex">
+                                {% if book.small_image_url %}
+                                <img src="{{ book.small_image_url }}" alt="{{ book.title }}" class="book-cover-small me-3">
+                                {% else %}
+                                <div class="book-cover-placeholder me-3">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <h6 class="book-title mb-1">{{ book.title }}</h6>
+                                    <p class="book-author text-muted mb-1">{{ book.authors }}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-success">{{ "%.3f"|format(book.hybrid_score) }}</span>
+                                        {% if book.average_rating %}
+                                        <small class="text-muted">
+                                            <i class="fas fa-star text-warning"></i>
+                                            {{ "%.1f"|format(book.average_rating) }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="mt-1">
+                                        <small class="text-muted">
+                                            LSA: {{ "%.1f"|format(book.lsa_score) }}% | 
+                                            Deep: {{ "%.3f"|format(book.deep_score) }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No hybrid recommendations available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Improvement Summary -->
+    {% if metrics.hybrid_metrics %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-trophy"></i>
+                        Performance Improvement
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-6">
+                            <h3 class="text-success">
+                                {% if metrics.hybrid_metrics.improvement_over_lsa > 0 %}
+                                    +{{ "%.3f"|format(metrics.hybrid_metrics.improvement_over_lsa) }}
+                                {% else %}
+                                    {{ "%.3f"|format(metrics.hybrid_metrics.improvement_over_lsa) }}
+                                {% endif %}
+                            </h3>
+                            <p class="mb-0">Improvement over LSA</p>
+                            <small class="text-muted">Precision@K difference</small>
+                        </div>
+                        <div class="col-md-6">
+                            <h3 class="text-primary">
+                                {{ "%.1f"|format((metrics.hybrid_metrics.improvement_over_lsa / metrics.lsa_metrics.precision_at_k * 100)) }}%
+                            </h3>
+                            <p class="mb-0">Relative Improvement</p>
+                            <small class="text-muted">Percentage increase</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Navigation -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('recommendations') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i>
+                Back to Recommendations
+            </a>
+            <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-home"></i>
+                Home
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.book-cover-small {
+    width: 50px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.book-cover-placeholder {
+    width: 50px;
+    height: 70px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+}
+
+.book-title {
+    font-size: 0.9rem;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.book-author {
+    font-size: 0.8rem;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.book-item {
+    border-bottom: 1px solid #f8f9fa;
+    padding-bottom: 10px;
+}
+
+.book-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,6 @@
+table,rows,unique_books,memory_mb,unique_users,unique_tags
+books,10000,10000.0,7.11,,
+ratings,981756,10000.0,24.34,53424.0,
+book_tags,999912,,24.79,,34252.0
+tags,34252,,2.65,,34252.0
+to_read,912705,9986.0,15.67,48871.0,

@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Reading List - Library System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-list"></i> My Reading List
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Reading List -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-bookmark"></i> Books to Read</h5>
+            </div>
+            <div class="card-body">
+                {% if not reading_list.empty %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Book</th>
+                                <th>Author</th>
+                                <th>Rating</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="readingListTable">
+                            {% for _, book in reading_list.iterrows() %}
+                            <tr data-book-id="{{ book.book_id }}">
+                                <td>
+                                    <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="text-decoration-none">
+                                        {{ book.title[:60] }}{% if book.title|length > 60 %}...{% endif %}
+                                    </a>
+                                </td>
+                                <td>{{ book.authors }}</td>
+                                <td>
+                                    <span class="rating-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < book.average_rating %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    <span class="ms-1">({{ "%.1f"|format(book.average_rating) }})</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="removeFromReadingList({{ book.book_id }})">
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Your reading list is empty</h5>
+                    <p class="text-muted">Start exploring books and add them to your reading list!</p>
+                    <a href="{{ url_for('home') }}" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Browse Books
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Additional Recommendations -->
+    <div class="col-md-4">
+        {% if not additional_recommendations.empty %}
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb"></i> You Might Also Like</h5>
+            </div>
+            <div class="card-body">
+                {% for _, book in additional_recommendations.iterrows() %}
+                <div class="mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">{{ book.title[:40] }}{% if book.title|length > 40 %}...{% endif %}</h6>
+                            <p class="card-text text-muted small">{{ book.authors }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="rating-stars">
+                                    {% for i in range(5) %}
+                                        {% if i < book.average_rating %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </span>
+                                <span class="similarity-score">
+                                    {% if 'recommendation_score' in book %}
+                                        {{ "%.3f"|format(book.recommendation_score) }}
+                                    {% else %}
+                                        <small class="text-muted">N/A</small>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('home') }}" class="btn btn-primary btn-sm w-100 mb-2">
+                    <i class="fas fa-home"></i> Browse All Books
+                </a>
+                <a href="{{ url_for('search') }}" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                    <i class="fas fa-search"></i> Search Books
+                </a>
+                <a href="{{ url_for('profile') }}" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="fas fa-user"></i> View Profile
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Remove book from reading list with toast notifications
+function removeFromReadingList(bookId) {
+    if (!confirm('Are you sure you want to remove this book from your reading list?')) {
+        return;
+    }
+    
+    fetch('/api/remove-from-reading-list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ book_id: bookId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success toast
+            showMessage('Book removed from reading list!', 'success');
+            
+            // Remove the row from the table
+            const row = document.querySelector(`tr[data-book-id="${bookId}"]`);
+            if (row) {
+                row.remove();
+            }
+            
+            // Check if table is empty and show message
+            const tbody = document.querySelector('#readingListTable tbody');
+            if (tbody && tbody.children.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Your reading list is empty</td></tr>';
+            }
+        } else {
+            // Show error toast
+            showMessage(data.message || 'Failed to remove book', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error removing book from reading list', 'error');
+    });
+}
+
+// showMessage function is now handled by the enhanced system in base.html
+</script>
+
+{% endblock %}

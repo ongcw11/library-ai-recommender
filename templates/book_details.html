@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} - Library System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            {% if book.image_url and book.image_url != 'nan' %}
+            <img src="{{ book.image_url }}" class="card-img-top" alt="{{ book.title }}" style="max-height: 400px; object-fit: contain;" onerror="this.style.display='none'">
+            {% endif %}
+            <div class="card-body text-center">
+                <h2 class="card-title">{{ book.title }}</h2>
+                <p class="card-text text-muted">by {{ book.authors }}</p>
+                
+                {% if book.original_publication_year %}
+                <p class="card-text">
+                    <i class="fas fa-calendar"></i> {{ book.original_publication_year }}
+                </p>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <span class="rating-stars">
+                        {% for i in range(5) %}
+                            {% if i < book.average_rating %}
+                                <i class="fas fa-star"></i>
+                            {% else %}
+                                <i class="far fa-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </span>
+                    <span class="ms-2">{{ "%.1f"|format(book.average_rating) }}/5.0</span>
+                </div>
+                
+                <p class="card-text">
+                    <i class="fas fa-users"></i> {{ book.ratings_count }} ratings
+                </p>
+                
+                {% if book.language_code %}
+                <p class="card-text">
+                    <i class="fas fa-language"></i> {{ book.language_code.upper() }}
+                </p>
+                {% endif %}
+                
+                {% if session.user_id %}
+                <button class="btn btn-success" id="addBtn{{ book.book_id }}" onclick="addToReadingListWithFeedback({{ book.book_id }})">
+                    <i class="fas fa-plus"></i> Add to Reading List
+                </button>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-sign-in-alt"></i> Login to Add to Reading List
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <!-- Book Tags -->
+        {% if book_tags %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-tags"></i> Tags</h5>
+            </div>
+            <div class="card-body">
+                {% for tag in book_tags[:10] %}
+                <span class="badge bg-secondary me-2 mb-2">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Book Information -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Book Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <p><strong>Title:</strong> {{ book.title }}</p>
+                        <p><strong>Author(s):</strong> {{ book.authors }}</p>
+                        {% if book.original_title and book.original_title != book.title %}
+                        <p><strong>Original Title:</strong> {{ book.original_title }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6">
+                        {% if book.original_publication_year %}
+                        <p><strong>Publication Year:</strong> {{ book.original_publication_year }}</p>
+                        {% endif %}
+                        {% if book.language_code %}
+                        <p><strong>Language:</strong> {{ book.language_code.upper() }}</p>
+                        {% endif %}
+                        <p><strong>Average Rating:</strong> {{ "%.2f"|format(book.average_rating) }}/5.0</p>
+                        <p><strong>Total Ratings:</strong> {{ book.ratings_count }}</p>
+                    </div>
+                </div>
+                
+                {% if book.isbn %}
+                <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Similar Books -->
+        {% if not similar_books.empty %}
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-book-open"></i> Similar Books</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for _, similar_book in similar_books.iterrows() %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            {% if similar_book.small_image_url and similar_book.small_image_url != 'nan' %}
+                            <img src="{{ similar_book.small_image_url }}" class="card-img-top" alt="{{ similar_book.title }}" style="height: 120px; object-fit: cover;" onerror="this.style.display='none'">
+                            {% endif %}
+                            <div class="card-body">
+                                <h6 class="card-title">{{ similar_book.title[:40] }}{% if similar_book.title|length > 40 %}...{% endif %}</h6>
+                                <p class="card-text text-muted small">{{ similar_book.authors }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="rating-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < similar_book.average_rating %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    <span class="similarity-score">
+                                        {{ "%.3f"|format(similar_book.similarity_score) }}
+                                    </span>
+                                </div>
+                                <a href="{{ url_for('book_details', book_id=similar_book.book_id) }}" class="btn btn-outline-primary btn-sm mt-2">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Back to Search -->
+<div class="row mt-4">
+    <div class="col-12">
+        <a href="{{ url_for('home') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Home
+        </a>
+    </div>
+</div>
+
+<script>
+function addToReadingList(bookId) {
+    fetch('/api/add-to-reading-list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            book_id: bookId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage('Book added to reading list!', 'success');
+            // Change button to show it's been added
+            const button = event.target;
+            button.innerHTML = '<i class="fas fa-check"></i> Added to Reading List';
+            button.className = 'btn btn-success disabled';
+        } else {
+            showMessage(data.message || 'Error adding book to reading list', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error adding book to reading list', 'error');
+    });
+}
+
+// Enhanced function with toast notifications and button state changes
+function addToReadingListWithFeedback(bookId) {
+    const button = document.getElementById(`addBtn${bookId}`);
+    const originalText = button.innerHTML;
+    
+    // Disable button and show loading state
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    
+    fetch('/api/add-to-reading-list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ book_id: bookId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success toast
+            showMessage('Book added to reading list!', 'success');
+            
+            // Change button to "Added" state
+            button.innerHTML = '<i class="fas fa-check"></i> Added to Reading List';
+            button.className = 'btn btn-outline-success';
+            button.disabled = true;
+        } else {
+            // Show error toast
+            showMessage(data.message || 'Failed to add book', 'error');
+            
+            // Restore original button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error adding book to reading list', 'error');
+        
+        // Restore original button state
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+// showMessage function is now handled by the enhanced system in base.html
+</script>
+{% endblock %}

@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Library System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-home"></i> Welcome to the Library System
+        </h1>
+        
+        {% if not session.user_id %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> 
+            <a href="{{ url_for('login') }}" class="alert-link">Login</a> to get personalized book recommendations!
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Search -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <h3 class="card-title">
+                    <i class="fas fa-search"></i> Find Your Next Great Read
+                </h3>
+                <p class="card-text">Search by title, author, or ISBN to discover amazing books</p>
+                <form action="{{ url_for('search') }}" method="GET" class="d-flex justify-content-center">
+                    <div class="input-group" style="max-width: 500px;">
+                        <input type="text" class="form-control" name="q" placeholder="Search books...">
+                        <select class="form-select" name="algorithm" style="max-width: 180px;">
+                            <option value="content-based">Content-Based</option>
+                            <option value="lsa-ann">LSA + ANN (Advanced)</option>
+                            <option value="hybrid">Hybrid (CF + CBF)</option>
+                            <option value="collaborative">Collaborative</option>
+                        </select>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Personalized Recommendations -->
+{% if session.user_id and not personalized_recommendations.empty %}
+<div class="recommendation-section">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="fas fa-star"></i> Recommended for You
+        </h2>
+        <a href="{{ url_for('recommendations') }}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-cogs"></i> Swap Algorithm
+        </a>
+    </div>
+    <div class="row">
+        {% for _, book in personalized_recommendations.iterrows() %}
+        <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+            <div class="card book-card">
+                {% if book.small_image_url and book.small_image_url != 'nan' %}
+                <img src="{{ book.small_image_url }}" class="card-img-top book-cover" alt="{{ book.title }}" onerror="this.style.display='none'">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title book-title">{{ book.title[:50] }}{% if book.title|length > 50 %}...{% endif %}</h5>
+                    <p class="card-text book-author">{{ book.authors }}</p>
+                    <div class="mb-2">
+                        <span class="rating-stars">
+                            {% for i in range(5) %}
+                                {% if i < book.average_rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </span>
+                        <small class="text-muted">({{ "%.1f"|format(book.average_rating) }})</small>
+                    </div>
+                    <div class="mb-2">
+                        <span class="similarity-score">
+                            {% if 'recommendation_score' in book %}
+                                Score: {{ "%.3f"|format(book.recommendation_score) }}
+                            {% else %}
+                                <small class="text-muted">Trending Book</small>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                        {% if session.user_id %}
+                        <button class="btn btn-success btn-sm" id="addBtn{{ book.book_id }}" onclick="addToReadingListWithFeedback({{ book.book_id }})">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="text-center mt-3">
+        <a href="{{ url_for('recommendations') }}" class="btn btn-primary">
+            <i class="fas fa-magic"></i> View All Recommendations
+        </a>
+    </div>
+</div>
+{% elif session.user_id %}
+<div class="recommendation-section">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="fas fa-star"></i> Recommended for You
+        </h2>
+        <a href="{{ url_for('recommendations') }}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-cogs"></i> Swap Algorithm
+        </a>
+    </div>
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle me-2"></i>
+        Get personalized book recommendations based on your preferences!
+        <br>
+        <a href="{{ url_for('recommendations') }}" class="btn btn-primary mt-2">
+            <i class="fas fa-magic"></i> Get Recommendations
+        </a>
+    </div>
+</div>
+{% endif %}
+
+
+<!-- Trending Books -->
+<div class="recommendation-section">
+    <h2 class="mb-4">
+        <i class="fas fa-fire"></i> Trending Books
+    </h2>
+    <div class="row">
+        {% for _, book in trending_books.iterrows() %}
+        <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+            <div class="card book-card">
+                {% if book.small_image_url and book.small_image_url != 'nan' %}
+                <img src="{{ book.small_image_url }}" class="card-img-top book-cover" alt="{{ book.title }}" onerror="this.style.display='none'">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title book-title">{{ book.title[:50] }}{% if book.title|length > 50 %}...{% endif %}</h5>
+                    <p class="card-text book-author">{{ book.authors }}</p>
+                    <div class="mb-2">
+                        <span class="rating-stars">
+                            {% for i in range(5) %}
+                                {% if i < book.average_rating %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </span>
+                        <small class="text-muted">({{ "%.1f"|format(book.average_rating) }})</small>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-users"></i> {{ book.ratings_count }} ratings
+                        </small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('book_details', book_id=book.book_id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-eye"></i> View Details
+                        </a>
+                        {% if session.user_id %}
+                        <button class="btn btn-success btn-sm" id="addBtn{{ book.book_id }}" onclick="addToReadingListWithFeedback({{ book.book_id }})">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function addToReadingList(bookId) {
+    fetch('/api/add-to-reading-list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            book_id: bookId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage('Book added to reading list!', 'success');
+            // Change button to show it's been added
+            const button = event.target;
+            button.innerHTML = '<i class="fas fa-check"></i> Added';
+            button.className = 'btn btn-success btn-sm disabled';
+        } else {
+            showMessage(data.message || 'Error adding book to reading list', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error adding book to reading list', 'error');
+    });
+}
+
+// Enhanced function with toast notifications and button state changes
+function addToReadingListWithFeedback(bookId) {
+    const button = document.getElementById(`addBtn${bookId}`);
+    const originalText = button.innerHTML;
+    
+    // Disable button and show loading state
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    
+    fetch('/api/add-to-reading-list', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ book_id: bookId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success toast
+            showMessage('Book added to reading list!', 'success');
+            
+            // Change button to "Added" state
+            button.innerHTML = '<i class="fas fa-check"></i> Added';
+            button.className = 'btn btn-outline-success btn-sm';
+            button.disabled = true;
+        } else {
+            // Show error toast
+            showMessage(data.message || 'Failed to add book', 'error');
+            
+            // Restore original button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('Error adding book to reading list', 'error');
+        
+        // Restore original button state
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+// showMessage function is now handled by the enhanced system in base.html
+</script>
+
+{% endblock %}
