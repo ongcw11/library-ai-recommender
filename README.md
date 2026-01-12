@@ -24,14 +24,14 @@ This app helps you discover new books by analyzing what you like and finding sim
 4. **Open browser**
    - Go to: `http://localhost:5000`
 
-That's it! 🎉
+That's it! 
 
 ## What You Can Do
 
-- 🔍 Search for books
-- 📖 Get book recommendations
-- 💾 Save books to your reading list
-- 📊 Compare different recommendation methods
+- Search for books
+- Get book recommendations
+- Save books to your reading list
+- Compare different recommendation methods
 
 ## Files
 
@@ -46,4 +46,4 @@ Just run `python app.py` and visit `http://localhost:5000` in your browser.
 
 ---
 
-Made with ❤️ using Python and Flask
+Made with using Python and Flask
